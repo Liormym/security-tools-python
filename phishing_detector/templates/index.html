@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Phishing Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Hebrew:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f12;
+    --surface: #13161b;
+    --surface2: #1a1e26;
+    --border: #252a35;
+    --border2: #2e3545;
+    --text: #e8eaf0;
+    --muted: #7a8299;
+    --accent: #4f9eff;
+    --danger: #ff4f4f;
+    --danger-dim: #2a1515;
+    --warn: #f5a623;
+    --warn-dim: #2a1e0a;
+    --safe: #3ecf8e;
+    --safe-dim: #0d2318;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans Hebrew', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    width: 100%;
+    max-width: 760px;
+    margin-bottom: 40px;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--danger);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 20px; height: 20px; fill: #fff; }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-right: auto;
+  }
+
+  main { width: 100%; max-width: 760px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-header-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .card-header span {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .drop-zone {
+    padding: 24px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+  }
+
+  .tab {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all .15s;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  textarea {
+    width: 100%;
+    height: 200px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    padding: 14px 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); opacity: .6; }
+
+  .file-drop {
+    border: 1.5px dashed var(--border2);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    display: none;
+  }
+
+  .file-drop.active-tab { display: block; }
+  .file-drop:hover, .file-drop.dragging {
+    border-color: var(--accent);
+    background: rgba(79,158,255,.04);
+  }
+
+  .file-drop p { font-size: 13px; color: var(--muted); }
+  .file-drop strong { color: var(--accent); font-weight: 500; }
+
+  #fileInput { display: none; }
+
+  .actions {
+    padding: 0 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  button.scan-btn {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 28px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .3px;
+  }
+
+  button.scan-btn:hover { opacity: .88; }
+  button.scan-btn:active { transform: scale(.97); }
+  button.scan-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  button.clear-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 18px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+
+  button.clear-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  .spinner {
+    display: none;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  #results { margin-top: 20px; display: none; }
+
+  .verdict-card {
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border: 1px solid;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    animation: fadeUp .25s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .verdict-card.phishing {
+    background: var(--danger-dim);
+    border-color: rgba(255,79,79,.3);
+    color: var(--danger);
+  }
+  .verdict-card.suspicious {
+    background: var(--warn-dim);
+    border-color: rgba(245,166,35,.3);
+    color: var(--warn);
+  }
+  .verdict-card.safe {
+    background: var(--safe-dim);
+    border-color: rgba(62,207,142,.3);
+    color: var(--safe);
+  }
+
+  .verdict-label { font-size: 11px; font-family: var(--mono); opacity: .7; margin-bottom: 4px; }
+  .verdict-text { font-size: 26px; font-family: var(--mono); font-weight: 500; }
+  .verdict-msg { font-size: 13px; margin-top: 8px; opacity: .85; line-height: 1.5; max-width: 420px; }
+
+  .score-box { text-align: left; }
+  .score-label { font-size: 11px; font-family: var(--mono); opacity: .7; margin-bottom: 4px; }
+  .score-num { font-size: 36px; font-family: var(--mono); font-weight: 500; }
+
+  .indicators-header {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 10px;
+  }
+
+  .indicator {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    animation: fadeUp .2s ease both;
+  }
+
+  .indicator-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: .5px;
+  }
+
+  .badge.HIGH   { background: rgba(255,79,79,.15);  color: var(--danger); }
+  .badge.MEDIUM { background: rgba(245,166,35,.15); color: var(--warn); }
+  .badge.LOW    { background: rgba(122,130,153,.15); color: var(--muted); }
+
+  .indicator-category {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .indicator-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    line-height: 1.5;
+  }
+
+  .indicator-evidence {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 6px 10px;
+    border-radius: 5px;
+    word-break: break-all;
+    line-height: 1.5;
+    opacity: .8;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* How to export */
+  .howto {
+    margin-top: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .howto-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .howto-header-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--warn);
+  }
+  .howto-header span {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .howto-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  .howto-step {
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border2);
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .step-desc  { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .step-img {
+    margin-top: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--warn); line-height: 1.7;
+  }
+  .howto-divider {
+    border: none; border-top: 1px solid var(--border); margin: 0;
+  }
+  .howto-note {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 14px;
+    line-height: 1.6;
+  }
+  .howto-note strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/></svg>
+    </div>
+    <h1>Phishing Detector</h1>
+  </div>
+  <span class="subtitle">v1.0 · security tools demo</span>
+</header>
+
+<main>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-dot"></div>
+      <span>Email Input</span>
+    </div>
+
+    <div class="drop-zone">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('text')">Paste Text</button>
+        <button class="tab" onclick="switchTab('file')">Upload File</button>
+      </div>
+
+      <textarea id="emailText" placeholder="Paste raw email content here...&#10;&#10;From: support@paypal-verify.top&#10;To: victim@example.com&#10;Subject: URGENT: Account suspended&#10;&#10;Dear customer, your account will be deactivated immediately..."></textarea>
+
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <input type="file" id="fileInput" accept=".txt,.eml" onchange="handleFileSelect(event)" />
+        <p><strong>Click to upload</strong> or drag & drop</p>
+        <p style="margin-top:6px; font-size:12px;">.txt or .eml files</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="scan-btn" id="scanBtn" onclick="runScan()">
+        <span id="btnText">Scan Email</span>
+        <span class="spinner" id="spinner"></span>
+      </button>
+      <button class="clear-btn" onclick="clearAll()">Clear</button>
+    </div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="howto">
+    <div class="howto-header">
+      <div class="howto-header-dot"></div>
+      <span>How to export an email as plain text</span>
+    </div>
+    <div class="howto-body">
+
+      <div class="howto-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Gmail — Show Original</div>
+          <div class="step-desc">Open the email → click the <strong style="color:var(--text)">⋮ three dots</strong> menu (top right of the email) → select <strong style="color:var(--text)">"Show original"</strong>. A new tab opens with the full raw email. Select all → copy → paste here.</div>
+          <div class="step-img">⋮ menu → Show original → Select All (Cmd/Ctrl+A) → Copy → Paste</div>
+        </div>
+      </div>
+
+      <hr class="howto-divider" />
+
+      <div class="howto-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Outlook — Save as .eml</div>
+          <div class="step-desc">Open the email → <strong style="color:var(--text)">File → Save As</strong> → choose type <strong style="color:var(--text)">.eml</strong> → open the file with Notepad or TextEdit → copy all the content → paste here.</div>
+          <div class="step-img">File → Save As → .eml → open with Notepad → Select All → Copy → Paste</div>
+        </div>
+      </div>
+
+      <hr class="howto-divider" />
+
+      <div class="howto-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Apple Mail — Raw Source</div>
+          <div class="step-desc">Open the email → menu bar → <strong style="color:var(--text)">View → Message → Raw Source</strong> (shortcut: <strong style="color:var(--text)">⌥⌘U</strong>) → select all → copy → paste here.</div>
+          <div class="step-img">View → Message → Raw Source (⌥⌘U) → Select All → Copy → Paste</div>
+        </div>
+      </div>
+
+      <hr class="howto-divider" />
+
+      <div class="howto-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Quick manual format</div>
+          <div class="step-desc">Just want to test something quickly? Type it in this format:</div>
+          <div class="step-img">From: sender@example.com
+To: you@example.com
+Reply-To: other@gmail.com
+Subject: Your subject here
+
+Email body text here...
+http://any-links.com</div>
+        </div>
+      </div>
+
+      <div class="howto-note">
+        💡 <strong>Tip:</strong> The more header lines you include (From, Reply-To, Subject), the more checks the detector can run. At minimum, paste the email body — it will still scan for suspicious links and urgent language.
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+let currentTab = 'text';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'text') || (i === 1 && tab === 'file'));
+  });
+  document.getElementById('emailText').style.display = tab === 'text' ? 'block' : 'none';
+  const drop = document.getElementById('fileDrop');
+  drop.style.display = tab === 'file' ? 'block' : 'none';
+}
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('fileDrop').classList.add('dragging'); }
+function handleDragLeave()  { document.getElementById('fileDrop').classList.remove('dragging'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('fileDrop').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+}
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) loadFile(f); }
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('emailText').value = e.target.result;
+    switchTab('text');
+  };
+  reader.readAsText(file);
+}
+
+async function runScan() {
+  const text = document.getElementById('emailText').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  document.getElementById('btnText').textContent = 'Scanning...';
+  document.getElementById('spinner').style.display = 'inline-block';
+  document.getElementById('results').style.display = 'none';
+
+  try {
+    const res = await fetch('/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    renderResults(data);
+  } catch (err) {
+    document.getElementById('results').innerHTML =
+      `<div class="verdict-card suspicious"><div><div class="verdict-text">Error</div><div class="verdict-msg">Could not connect to server. Make sure the Flask app is running.</div></div></div>`;
+    document.getElementById('results').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btnText').textContent = 'Scan Email';
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+
+function renderResults(data) {
+  const verdictClass = { PHISHING: 'phishing', SUSPICIOUS: 'suspicious', 'LIKELY SAFE': 'safe' }[data.verdict] || 'safe';
+  const verdictMsg = {
+    PHISHING: '⛔ Do NOT click any links or open attachments. Report this email to your security team immediately.',
+    SUSPICIOUS: '⚠️ Treat this email with caution. Verify the sender through official channels before taking any action.',
+    'LIKELY SAFE': '✅ No significant phishing indicators detected. Always stay vigilant — no detector is perfect.',
+  }[data.verdict];
+
+  const indicatorsHTML = data.indicators.length === 0
+    ? `<div class="empty-state">No indicators detected.</div>`
+    : data.indicators.map((ind, i) => `
+      <div class="indicator" style="animation-delay: ${i * 0.04}s">
+        <div class="indicator-top">
+          <span class="badge ${ind.severity}">${ind.severity}</span>
+          <span class="indicator-category">${ind.category}</span>
+        </div>
+        <div class="indicator-desc">${ind.description}</div>
+        <div class="indicator-evidence">${escapeHtml(ind.evidence)}</div>
+      </div>`).join('');
+
+  document.getElementById('results').innerHTML = `
+    <div class="verdict-card ${verdictClass}">
+      <div>
+        <div class="verdict-label">VERDICT</div>
+        <div class="verdict-text">${data.verdict}</div>
+        <div class="verdict-msg">${verdictMsg}</div>
+      </div>
+      <div class="score-box">
+        <div class="score-label">RISK SCORE</div>
+        <div class="score-num">${data.score}</div>
+      </div>
+    </div>
+    <div class="indicators-header">${data.indicators.length} indicator${data.indicators.length !== 1 ? 's' : ''} found</div>
+    ${indicatorsHTML}
+  `;
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function clearAll() {
+  document.getElementById('emailText').value = '';
+  document.getElementById('results').style.display = 'none';
+}
+</script>
+</body>
+</html>
